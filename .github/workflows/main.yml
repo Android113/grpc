@@ -1,0 +1,45 @@
+name: CI Security Scan on Push
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  security-analysis:
+    name: Trivy Security Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+      # ШАГ 1: Клонирование исходного кода
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      # ШАГ 2: Сканирование исходного кода
+      - name: Run Trivy FS Scan on Source Code
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          vuln-type: 'library'
+          severity: 'CRITICAL'
+          exit-code: '1'
+          ignore-unfixed: true
+          format: 'table'
+
+      # ШАГ 3: АУТЕНТИФИКАЦИЯ В DOCKER HUB.
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # ШАГ 4: Сканирование Docker-образа (Задание 3)
+      - name: Run Trivy Image Scan on Public GRPC Image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'grpc/grpc:latest'
+          vuln-type: 'os,library'
+          severity: 'CRITICAL'
+          exit-code: '1'
+          ignore-unfixed: true
+          format: 'table'
